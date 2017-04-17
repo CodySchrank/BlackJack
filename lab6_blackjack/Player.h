@@ -13,6 +13,7 @@
 #include "Deck.h"
 
 typedef struct Player {
+    char *name;
     int chips;
     int numberOfWins;
     int arrayPosition;

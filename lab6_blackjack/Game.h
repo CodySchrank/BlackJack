@@ -10,12 +10,13 @@
 #define Game_h
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include "Deck.h"
 #include "Player.h"
 
 void StartGame();
 void StartRound();
-char PrintGame();
+char PrintGame(int, bool);
 
 #endif /* Game_h */
