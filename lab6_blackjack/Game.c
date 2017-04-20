@@ -38,24 +38,49 @@ void StartGame() {
         return;
     } else {
         shuffleDeck(1);
-        
-        initPlayers(&player, &dealer);
         deckPosition = 0;
+        initPlayers(&player, &dealer);
         
-        StartRound();
         
-        //continue game here;
         
+        for(;;) {
+            resetCards(&player, &dealer);
+            StartRound();
+        }
     }
 }
 
 void StartRound() {
-    int bet;
+    int bet = -1;
     playerDone = false;
+    
+    
     printf("Your total number of chips is: %d\n", player.chips);
     printf("What is your bet?\n");
-    //FIXME: BUG - Should only be allowed to bet what you have
-    scanf(" %d", &bet);
+    
+    for(;;) {
+        scanf(" %d", &bet);
+        printf("\n");
+        if(bet == -1) {
+            char option;
+            scanf(" %c", &option);
+            printf("\n");
+            
+            if(option == 'q' || option == 'Q') {
+                exit(0);
+            } else {
+                return;
+            }
+        
+        } else if(bet <= 0) {
+            printf("You can't bet that\n");
+        } else if(bet > player.chips ) {
+            printf("You don't have that much money!\n");
+        } else {
+            break;
+        }
+    }
+    
     player.chips -= bet;
     
     waitPrint("Dealing Card To Player...");
@@ -82,7 +107,7 @@ void StartRound() {
     GameLoop(bet);
 }
 
-char PrintGame(int bet, bool shouldChoose) {
+char PrintGame(int bet, bool shouldChoose, char *text, bool isPlayer) {
     waitPrint("\033[2J\033[1;1H");
     
     printf(" /~\\\n");
@@ -99,12 +124,24 @@ char PrintGame(int bet, bool shouldChoose) {
     }
     
     if(shouldChoose) {
-        printf("[*]--\n");
+        printf("[*]--\n\n\n\n\n\n");
     } else {
         printf("[%s]--\n", dealer.cards[dealer.arrayPosition - 1].face);
+        
+        if(isPlayer) {
+            char playerTextUpper[] = "";
+            int i = 0;
+            
+            while(text[i]) {
+                playerTextUpper[i] = toupper(text[i]);
+                i++;
+            }
+            
+            printf("\n\n---%s WON---\n\n\n", playerTextUpper);
+        } else {
+            printf("\n\n---%s---\n\n\n", text);
+        }
     }
-    
-    printf("\n\n\n\n\n");
     
     printf("--");
     for(i = 0; i < player.arrayPosition; i++) {
@@ -114,11 +151,11 @@ char PrintGame(int bet, bool shouldChoose) {
     }
     
     printf("--\n");
-    printf("Your Bet: %d\n", bet);
-    printf("Chips: %d\n", player.chips);
     
     char choice = '0';
     if(shouldChoose) {
+        printf("Your Bet: %d\n", bet);
+        printf("Chips: %d\n\n", player.chips);
         printf("Press H to hit, Press S to stand, Press D to double down\n");
         
         scanf(" %c",&choice);
@@ -129,48 +166,40 @@ char PrintGame(int bet, bool shouldChoose) {
 
 void GameLoop(int bet) {
     char choice;
+    bool firstRound = true;
+    Player winner = {.name = "nil"};
+    bool win = checkWin(true, &winner, bet);
+    bool lose = checkLose(&winner, bet);
     
     for(;;) {
-        Player winner = {.name = "nil"};
-        //TODO:  Check win or lose
-        bool win = checkWin(true, &winner);
-        bool lose = checkLose(&winner);
-
-        
         if(win && winner.name != NULL) {
             winnerScreen(&winner);
             break;
-        } else if (win && winner.name == NULL){ //TODO: tie
+        } else if (win && winner.name == NULL){ //tie
             tieScreen();
             break;
         } else if (lose) {
             winnerScreen(&winner);
             break;
         } else {
-            choice = PrintGame(bet, true);
+            choice = PrintGame(bet, true, "", false);
             
             switch (choice) {
                 case 'h':
-                    //TODO: Not done testing
                     waitPrint("Dealing Card To Player...");
                     
                     printf("It was a: %s\n\n", Deck[deckPosition].face);
+                    waitPrint("");
                     
                     hit(&player);
                     
-                    lose = checkLose(&winner);
+                    lose = checkLose(&winner, bet);
                     if(lose) {
                         break;
                     }
                     
-                    dealerPlay();
-                    win = checkWin(false, &winner);
+                    win = checkWin(false, &winner, bet);
                     if(win) {
-                        break;
-                    }
-                    
-                    lose = checkLose(&winner);
-                    if(lose) {
                         break;
                     }
                     
@@ -178,33 +207,69 @@ void GameLoop(int bet) {
                 
                 case 's':
                     playerDone = true;
-                    win = checkWin(false, &winner);
+                    win = checkWin(false, &winner, bet);
                     
                     if(win) {
                         break;
                     }
                     
                     for(;;) {
-                        win = checkWin(false, &winner);
+                        win = checkWin(false, &winner, bet);
                         if(win) {
                             break;
                         }
                         
                         dealerPlay();
-                        lose = checkLose(&winner);
+                        lose = checkLose(&winner, bet);
                         if(lose) {
                             break;
                         }
                     }
                     
-                    PrintGame(bet, false);
-                    
                     break;
                     
                 case 'd':
-                    printf("D");
-                    break;
-                    
+                    if(firstRound) {
+                        if(bet * 2 > player.chips) {
+                            waitPrint("You don't have enough money");
+                            break;
+                        } else {
+                            player.chips -= bet;
+                            bet *= 2;
+                        }
+                        
+                        waitPrint("Dealing Card To Player...");
+                        
+                        printf("It was a: %s\n\n", Deck[deckPosition].face);
+                        waitPrint("");
+                        
+                        hit(&player);
+                        
+                        lose = checkLose(&winner, bet);
+                        if(lose) {
+                            break;
+                        }
+
+                        playerDone = true;
+                        
+                        for(;;) {
+                            win = checkWin(false, &winner, bet);
+                            if(win) {
+                                break;
+                            }
+                            
+                            dealerPlay();
+                            lose = checkLose(&winner, bet);
+                            if(lose) {
+                                break;
+                            }
+                        }
+                        
+                        break;
+                    } else {
+                        printf("You can't double down now.\n");
+                        break;
+                    }
                 case 'q':
                     return;
                 
@@ -217,13 +282,15 @@ void GameLoop(int bet) {
         if(win && winner.name != NULL) {
             winnerScreen(&winner);
             break;
-        } else if (win && winner.name == NULL){ //TODO: tie
+        } else if (win && winner.name == NULL){ //tie
             tieScreen();
             break;
         } else if (lose) {
             winnerScreen(&winner);
             break;
         }
+        
+        firstRound = false;
     }
 }
 
@@ -235,37 +302,52 @@ Returns true and points to NULL - tie
 Returns false and points to NULL - Win conditions not met
  
 **/
-bool checkWin(int firstRound, Player *winner) {
+bool checkWin(int firstRound, Player *winner, int bet) {
     int playerTotal = 0, dealerTotal = 0;
     
     int i,j;
     
     for(i = 0; i < dealer.arrayPosition; i++) {
-        int card = dealer.cards[i].value;
-        
-        if(card == 0) {
-            //MARK: I believe working solution to count Aces
+        char card = *dealer.cards[i].face;
+        int value = dealer.cards[i].value;
+        if(strncmp(&card, "A", 1) == 0) {
             int shouldBeAceTotal = 0;
             for(j = 0; j < dealer.arrayPosition; j++) {
                 shouldBeAceTotal += dealer.cards[j].value;
                 if(shouldBeAceTotal > 10) {
-                    dealer.cards[i].value = 1;
+                    value = 1;
                 } else {
-                    dealer.cards[i].value = 11;
+                    value = 11;
                 }
             }
         }
         
-        dealerTotal += dealer.cards[i].value;
+        dealerTotal += value;
     }
     
     for(i = 0; i < player.arrayPosition; i++) {
-        //TODO: Check ACE
-        playerTotal += player.cards[i].value;
+        char card = *player.cards[i].face;
+        int value = player.cards[i].value;
+        if(strncmp(&card, "A", 1) == 0) {
+            int shouldBeAceTotal = 0;
+            for(j = 0; j < player.arrayPosition; j++) {
+                shouldBeAceTotal += player.cards[j].value;
+                if(shouldBeAceTotal > 10) {
+                    value = 1;
+                } else {
+                    value = 11;
+                }
+            }
+        }
+        
+        playerTotal += value;
     }
     
     if(firstRound) {
         if(playerTotal == 21) {
+            bet *= 3;
+            betWinnings(&player, bet);
+            
             memcpy (winner, &player, sizeof (player));
             return true;
         } else if (dealerTotal == 21) {
@@ -275,6 +357,9 @@ bool checkWin(int firstRound, Player *winner) {
     } else {
         if(dealerTotal >= 17 && dealerTotal <= 21 && playerTotal <= 21) {
             if(playerTotal > dealerTotal) {
+                bet *= 2;
+                betWinnings(&player, bet);
+            
                 memcpy (winner, &player, sizeof (player));
                 return true;
             } else if(dealerTotal > playerTotal  && playerDone) {
@@ -297,16 +382,21 @@ Returns false if lose conditions not met - point to NULL
  
 **/
 
-bool checkLose(Player *winner) {
+bool checkLose(Player *winner, int bet) {
     int playerTotal = 0, dealerTotal = 0;
     
     int i;
-    
     for(i = 0; i < dealer.arrayPosition; i++) {
+        if(strncmp(dealer.cards[i].face, "A", 1) == 0) {
+            dealerTotal += 1;
+        }
         dealerTotal += dealer.cards[i].value;
     }
     
     for(i = 0; i < player.arrayPosition; i++) {
+        if(strncmp(player.cards[i].face, "A", 1) == 0) {
+            dealerTotal += 1;
+        }
         playerTotal += player.cards[i].value;
     }
     
@@ -314,6 +404,9 @@ bool checkLose(Player *winner) {
         memcpy (winner, &dealer, sizeof (dealer));
         return true;
     } else if(dealerTotal > 21) {
+        bet *= 2;
+        betWinnings(&player, bet);
+        
         memcpy (winner, &player, sizeof (player));
         return true;
     } else {
@@ -323,36 +416,68 @@ bool checkLose(Player *winner) {
 
 
 void hit(Player *person) {
-    //TODO: Check deck overflow
     person -> cards[person -> arrayPosition] = Deck[deckPosition];
     person -> arrayPosition++;
     deckPosition++;
+    
+    if(deckPosition == 52) {
+        waitPrint("Please wait...");
+        waitPrint("Shuffling Deck...");
+        waitPrint("...");
+        waitPrint("...");
+        printf("\n");
+        
+        shuffleDeck(0);
+        deckPosition = 0;
+    }
 }
 
 void dealerPlay() {
     int dealerTotal = 0;
     
-    int i;
+    int i,j;
     for(i = 0; i < dealer.arrayPosition; i++) {
+        char card = *dealer.cards[i].face;
+        int value = dealer.cards[i].value;
         
-        //TODO: Check ACE
-        dealerTotal += dealer.cards[i].value;
+        if(strncmp(&card, "A", 1) == 0) {
+            int shouldBeAceTotal = 0;
+            for(j = 0; j < dealer.arrayPosition; j++) {
+                shouldBeAceTotal += dealer.cards[j].value;
+                if(shouldBeAceTotal > 10) {
+                    value = 1;
+                } else {
+                    value = 11;
+                }
+            }
+        }
+        dealerTotal += value;
     }
     
     if(dealerTotal < 17) {
         waitPrint("Dealing Card To Dealer...");
         
         printf("It was a: %s\n\n", Deck[deckPosition].face);
+        waitPrint("");
+        
         hit(&dealer);
     }
 }
 
 void winnerScreen(Player *person) {
-    printf("%s\n", person -> name);
+    if(strcmp(person -> name, player.name) == 0) {
+        player.numberOfWins++;
+    } else if(strcmp(person -> name, dealer.name) == 0) {
+        dealer.numberOfWins++;
+    }
+    
+    PrintGame(0, false, person -> name, true);
+    printf("\n\n");
 }
 
 void tieScreen() {
-    printf("tie\n");
+    PrintGame(0, false, "TIE", false);
+    printf("\n\n");
 }
 
 void waitPrint(char *text) {

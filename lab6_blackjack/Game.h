@@ -12,11 +12,12 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include "Deck.h"
 #include "Player.h"
 
 void StartGame();
 void StartRound();
-char PrintGame(int, bool);
+char PrintGame(int, bool, char *, bool);
 
 #endif /* Game_h */

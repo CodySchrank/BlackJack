@@ -19,3 +19,18 @@ void initPlayers(Player *player, Player *dealer) {
     dealer -> numberOfWins = 0;
     dealer -> arrayPosition = 0;
 }
+
+void resetCards(Player *player, Player *dealer) {
+    player -> arrayPosition = 0;
+    memset(player -> cards, 0, 10);
+    
+    dealer -> arrayPosition = 0;
+    memset(dealer -> cards, 0, 10);
+}
+
+void betWinnings(Player *player, int bet) {
+    int totalChips = player -> chips;
+    totalChips += bet;
+    
+    player -> chips = totalChips;
+}

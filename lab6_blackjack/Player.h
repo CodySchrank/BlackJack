@@ -10,6 +10,7 @@
 #define Player_h
 
 #include <stdio.h>
+#include <string.h>
 #include "Deck.h"
 
 typedef struct Player {
@@ -21,5 +22,7 @@ typedef struct Player {
 } Player ;
 
 void initPlayers();
+void resetCards();
+void betWinnings();
 
 #endif /* Player_h */
