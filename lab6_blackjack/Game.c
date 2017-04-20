@@ -270,8 +270,6 @@ void GameLoop(int bet) {
                         printf("You can't double down now.\n");
                         break;
                     }
-                case 'q':
-                    return;
                 
                 default:
                     break;
